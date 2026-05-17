@@ -1,3 +1,8 @@
+//vars/sayHello.groovy
+package com.nexus
+
+import com.nexus.Logger
+
 def call (String name = "World") {
-    echo "Hello, ${name}!"
+    Logger.info("Hello, ${name}!")
 }

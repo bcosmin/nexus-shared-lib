@@ -1,0 +1,10 @@
+production:
+  bucketName: nexus-production-bucket
+  region: us-east-1
+  accessKeyId: PROD_ACCESS_KEY
+  secretAccessKey: PROD_SECRET_KEY
+staging:
+  bucketName: nexus-staging-bucket
+  region: us-east-1
+  accessKeyId: STAGING_ACCESS_KEY
+  secretAccessKey: STAGING_SECRET_KEY
