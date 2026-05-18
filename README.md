@@ -64,6 +64,25 @@ A utility to analyze Jenkins node clusters and identify idle instances that have
 
 ## Configuration
 
+### 5. Email Notifications (`sendEmail.groovy`)
+
+A utility step to send email notifications from the pipeline. It supports custom subjects, bodies, and an HTML template for consistent formatting.
+
+**Usage:**
+
+```groovy
+stage('Send Notification') {
+    steps {
+        sendEmail(
+            recipients: 'dev-team@example.com, qa-team@example.com',
+            subject: "Build ${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
+            body: "The build for ${env.JOB_NAME} completed with status: ${currentBuild.currentResult}.",
+            useTemplate: true // Set to false to send plain text body
+        )
+    }
+}
+```
+
 ### S3 Configuration (`configS3.yaml`)
 
 Update `resources/scripts/configS3.yaml` to change bucket names or deployment regions:
