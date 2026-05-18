@@ -84,6 +84,22 @@ def call(Map configMap = [:]) {
             always {
                 Logger.info("Pipeline execution completed for Project: ${config.projectName}")
             }
+            failed {
+                sendEmail(
+                    recipients: 'myEmail@company.com',
+                    subject: "CRITICAL PIPELINE FAILURE: ${config.projectName} [${config.environment.toUpperCase()}]",
+                    useTemplate: true
+                )
+                Logger.error("Pipeline failed for Project: ${config.projectName}")
+            }
+            success {
+                sendEmail(
+                    recipients: 'myEmail@company.com',
+                    subject: "SUCCESSFUL PIPELINE: ${config.projectName} [${config.environment.toUpperCase()}]",
+                    useTemplate: true
+                )
+                Logger.info("Pipeline succeeded for Project: ${config.projectName}")
+            }
         }
     }
 }

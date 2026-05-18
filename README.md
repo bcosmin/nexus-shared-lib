@@ -71,10 +71,10 @@ Update `resources/scripts/configS3.yaml` to change bucket names or deployment re
 ```yaml
 production:
   bucketName: nexus-production-bucket
-  region: us-east-1
+  region: eu-central-1
 staging:
   bucketName: nexus-staging-bucket
-  region: us-east-1
+  region: eu-central-1
 ```
 
 ## Contributing
