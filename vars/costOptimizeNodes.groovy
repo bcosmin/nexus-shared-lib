@@ -1,3 +1,5 @@
+#!/usr/bin/env groovy
+
 // vars/costOptimizeNodes.groovy
 def call() {
     echo "Running cost optimization routine for Jenkins node clusters..."

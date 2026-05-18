@@ -1,3 +1,5 @@
+#!/usr/bin/env groovy
+
 // vars/standardPipeline.groovy
 package com.nexus
 

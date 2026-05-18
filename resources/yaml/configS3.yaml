@@ -1,0 +1,6 @@
+production:
+  bucketName: nexus-production-bucket
+  region: eu-central-1
+staging:
+  bucketName: nexus-staging-bucket
+  region: eu-central-1

@@ -1,3 +1,5 @@
+#!/usr/bin/env groovy
+
 //vars/sayHello.groovy
 package com.nexus
 
