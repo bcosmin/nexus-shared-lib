@@ -2,7 +2,7 @@ name: "Continuous Integration"
 
 on:
   push:
-    branches: [ "main", "feature/*", "hotfix/*" ]  # Added to catch your feature pushes instantly!
+    branches: [ "main", "feature/*", "hotfix/*" ]
   pull_request:
     branches: [ "main" ]
 
