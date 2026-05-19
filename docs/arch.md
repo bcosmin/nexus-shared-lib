@@ -3,7 +3,7 @@
 ```text
 +-------------------------------------------------------------+
 |                     App Repository                          |
-|  (Includes simple Jenkinsfile calling standardPipeline())   |
+|  (Includes simple Jenkinsfile calling nexusPipeline())      |
 +------------------------------+------------------------------+
                                |
                                v Triggers

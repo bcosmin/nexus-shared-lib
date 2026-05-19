@@ -10,7 +10,7 @@ This Jenkins Shared Library provides standardized pipelines, security checks, de
 
 ## Features
 
-### 1. Standard Pipeline (`standardPipeline.groovy`)
+### 1. Standard Pipeline (`nexusPipeline.groovy`)
 
 A declarative pipeline wrapper that standardizes the CI process across multiple projects. It includes stages for Initialization, Security Compliance Scanning, Building, and Cloud Cost Optimization.
 
@@ -19,7 +19,7 @@ A declarative pipeline wrapper that standardizes the CI process across multiple 
 ```groovy
 @Library('nexus-shared-lib') _
 
-standardPipeline(
+nexusPipeline(
     projectName: 'my-awesome-microservice',
     environment: 'staging',
     runSecurityScan: true,

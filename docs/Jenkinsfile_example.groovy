@@ -1,19 +1,20 @@
 @Library('nexus-shared-lib@master') _ // Use 'master' or your specific branch name
 
-// This Jenkinsfile demonstrates the full capabilities of the standardPipeline
+// This Jenkinsfile demonstrates the full capabilities of the nexusPipeline
 // provided by the 'nexus-shared-lib'.
 // It enables all feature toggles and provides example configurations
 // for S3, Docker, security whitelisting, and custom extension points.
 
-standardPipeline(
+nexusPipeline(
     // --- Project Metadata ---
     projectName: 'my-full-featured-app',
-    environment: 'production', // Can be 'development', 'staging', 'production', etc.
+    environment: 'development', // Can be 'development', 'staging', 'production', etc.
 
     // --- Feature Toggles (set to true to enable all features for this example) ---
     runSecurityScan: true,
     optimizeCosts: true,
     uploadArtifactsToS3: true,
+    uploadToArtifactory: true,
     buildAndPushDocker: true,
     sendEmailNotifications: true,
 
@@ -22,10 +23,17 @@ standardPipeline(
     awsRegion: 'eu-central-1',                 // Overrides default 'us-east-1'
     awsCredentialsId: 'my-aws-jenkins-creds',  // Jenkins Credential ID for AWS access
 
+    // --- JFrog Artifactory Configuration (only relevant if uploadToArtifactory is true) ---
+    artifactoryServerId: 'my-jfrog-server',        // Overrides default 'jfrog-enterprise-server'
+    artifactoryTargetRepo: 'my-app-libs-local',    // Overrides default 'generic-local'
+    artifactoryCredentialsId: 'my-jfrog-creds',    // Jenkins Credential ID for Artifactory access
+    artifactoryPattern: 'build/libs/*.jar',        // Pattern for files to upload (Overrides default '**/*')
+
     // --- Docker Configuration (only relevant if buildAndPushDocker is true) ---
     dockerRegistry: 'my.private.docker.registry.com', // Example private registry
     dockerCredentialsId: 'my-docker-jenkins-creds',   // Jenkins Credential ID for Docker registry login
     dockerImageName: 'my-full-featured-app-image',    // Custom image name
+
 
     // --- Security Whitelist Configuration ---
     // List of CVE IDs or secret hashes to be ignored by the SecurityGuard
