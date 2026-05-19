@@ -1,25 +1,26 @@
 #!/usr/bin/env groovy
-
 // vars/standardPipeline.groovy
-package com.nexus
 
 import com.nexus.PipelineConfig
 import com.nexus.SecurityGuard
 import com.nexus.CostOptimizer
 import com.nexus.Logger
 
-
 def call(Map configMap = [:]) {
+    // 1. Instantiate the logger inside the active pipeline execution context
+    def log = new Logger(this)
 
     String fallbackProjectName = env.JOB_BASE_NAME ?: 'nexus-unknown-fallback'
 
+    // 2. Hydrate configuration
     def config = new PipelineConfig(configMap, fallbackProjectName)
 
-    if (!config.projectName) {
-        Logger.warn(" 'projectName' must be defined in your Jenkinsfile. Using default: ${config.projectName}")
+    // Log tracking warnings gracefully if fallbacks were triggered
+    if (config.projectName == 'nexus-unknown-fallback') {
+        log.warn(" 'projectName' was not defined in your Jenkinsfile. Using dynamic fallback: ${config.projectName}")
     }
 
-    // Define stages of the pipeline
+    // 3. Define stages of the pipeline
     pipeline {
         agent any
 
@@ -32,73 +33,182 @@ def call(Map configMap = [:]) {
         stages {
             stage('Initialization') {
                 steps {
-                    Logger.info("Initializing pipeline for Project: ${config.projectName}")
-                    Logger.info("Target Deployment Environment: ${config.environment}")
-                    // Add initialization steps here (e.g., checkout, setting up environment variables)
+                    log.info("Initializing pipeline for Project: ${config.projectName}")
+                    log.info("Target Deployment Environment: ${config.environment}")
                 }
             }
 
             stage('Security Compliance Scan') {
                 when {
-                    expression { return config.runSecurityScan == true }
+                    expression { return config.runSecurityScan }
                 }
-                steps {
+                steps { 
                     script {
-                        Logger.info("Security scan enabled. Starting compliance checks...")
-                        def securityGuard = new com.nexus.SecurityGuard(this)
-                        boolean isSafe = securityGuard.performSecretScan(config.repoUrl ?: env.GIT_URL ?: "local-repository")
-                        if (!isSafe) {
-                            Logger.fatal("Pipeline aborted due to security scan failure.")
+                        log.info("Security scan enabled. Starting compliance checks for ${config.projectName}...")
+
+                        def securityGuard = new SecurityGuard(this, config)
+                        def scanResults = securityGuard.runComplianceScan()
+
+                        if (scanResults.hasCriticalIssues()) {
+                            log.error("Critical security issues found! Failing the pipeline.")
+                            error("Pipeline failed due to critical security issues in ${config.projectName}.")
+                        } else {
+                            log.info("Security scan completed. No critical issues found.")
                         }
                     }
                 }
             }
-            stage('Build and Artifact') {
-                steps {
-                    Logger.info("Building application: ${config.projectName}")
-                    // Add build steps here (e.g., Maven, Gradle, npm)
-                }
-            }
-            /* stage('Cloud Cost Optimization') {
+            
+            // HYBRID SLOT 1: Before Build Custom Tasks
+            stage('Pre-Build Extensions') {
                 when {
-                    expression { return config.optimizeCosts == true }
+                    expression { return config.beforeBuild != null }
                 }
                 steps {
                     script {
-                        Logger.info("Analyzing cloud footprint and infrastructure cost optimizations...")
-                        def costOptimizer = new com.nexus.CostOptimizer(this)
-                        // Simulate fetching node metrics (in real case, this would be dynamic)
-                        def nodeMetrics = [
-                            [instanceId: 'node-1', isIdle: true, runningHours: 5, costPerHour: 0.10],
-                            [instanceId: 'node-2', isIdle: false, runningHours: 2, costPerHour: 0.15],
-                            [instanceId: 'node-3', isIdle: true, runningHours: 6, costPerHour: 0.20]
-                        ]
-                        def nodesToPrune = costOptimizer.analyzeClusterNodes(nodeMetrics)
-                        Logger.info("Nodes identified for pruning to save costs: ${nodesToPrune.keySet()}")
+                        log.info("Executing user-defined [beforeBuild] tasks...")
+                        config.beforeBuild.delegate = this
+                        config.beforeBuild()
                     }
                 }
+            }
+            
+            stage('Build') {
+                steps {
+                    log.info("Building application: ${config.projectName}")
+                    // Add build steps here (e.g., Maven, Gradle, npm)
+                }
+            }
+            
+            // HYBRID SLOT 2: After Build Custom Tasks
+            stage('Post-Build Extensions') {
+                when {
+                    expression { return config.afterBuild != null }
+                }
+                steps {
+                    script {
+                        log.info("Executing user-defined [afterBuild] tasks...")
+                        config.afterBuild.delegate = this
+                        config.afterBuild()
+                    }
+                }
+            }
 
-            } */
+            // HYBRID SLOT 3: Before Deploy Custom Tasks
+            stage('Pre-Deployment Extensions') {
+                when {
+                    expression { return config.beforeDeploy != null }
+                }
+                steps {
+                    script {
+                        log.info("Executing user-defined [beforeDeploy] tasks...")
+                        config.beforeDeploy.delegate = this
+                        config.beforeDeploy()
+                    }
+                }
+            }
+
+            stage('Docker Build and Push') {
+                when {
+                    expression { return config.buildAndPushDocker }
+                }
+                steps {
+                    log.info("Container lifecycle management enabled. Building and pushing Docker image for ${config.projectName}...")
+                    buildAndPushDockerImage(
+                        registry: config.dockerRegistry,
+                        repoName: config.dockerRepoName,
+                        credentialsId: config.dockerCredentialsId,
+                        tag: "${env.BUILD_NUMBER}"
+                    )
+
+                    // Output a standardized platform container metadata scorecard
+                    log.info("""
+                        ==================================================
+                        CONTAINER DISTRIBUTION SCORECARD: ${config.projectName.toUpperCase()}
+                        ==================================================
+                        - Image Distribution Path: ${containerReport.finalImageCoordinates}
+                        - Target Registry Domain:  ${config.dockerRegistry}
+                        - Manifest Release Tag:    ${containerReport.imageTag}
+                        - Calculated Layer Size:   ${containerReport.imageSizeRaw}
+                        ==================================================
+                        """.stripIndent())
+                }
+            }
+            
+            stage('Upload Artifacts to S3') {
+                when {
+                    expression { return config.uploadArtifacts }
+                }
+                steps {
+                    log.info("Uploading artifacts to S3 for application: ${config.projectName}")
+                    uploadToS3(
+                        bucket: config.s3Bucket,
+                        region: config.awsRegion,
+                        credentialsId: config.awsCredentialsId,
+                        artifactPattern: 'build/libs/*.jar',
+                        targetFolder: "${env.JOB_BASE_NAME}/${env.BUILD_NUMBER}"
+                    )
+                }
+            }
+            
+            stage('Cloud Cost Optimization') {
+                when {
+                    expression { return config.optimizeCosts }
+                }
+                steps {
+                    script {
+                        log.info("Cost tracking optimization enabled. Scanning infrastructure files...")
+                        
+                        def costOptimizer = new CostOptimizer(this, config)
+                        def costResults = costOptimizer.runCostAnalysis()
+                        
+                        if (costResults.budgetExceeded) {
+                            log.warn("BUDGET ALERT: Infrastructure spend (\$${costResults.projectedMonthlyCost}) exceeds the environment ceiling by \$${costResults.varianceAmount}!")
+                        } else {
+                            log.info("Cost optimization complete. Projections sit safely within normal parameters.")
+                        }
+                    }
+                }
+            }
+
+            // HYBRID SLOT 4: After Deploy Custom Tasks
+            stage('Post-Deployment Extensions') {
+                when {
+                    expression { return config.afterDeploy != null }
+                }
+                steps {
+                    script {
+                        log.info("Executing user-defined [afterDeploy] testing blocks...")
+                        config.afterDeploy.delegate = this
+                        config.afterDeploy()
+                    }
+                }
+            }
         }
+        
         post {
             always {
-                Logger.info("Pipeline execution completed for Project: ${config.projectName}")
+                log.info("Pipeline execution completed for Project: ${config.projectName}")
             }
-            failed {
-                sendEmail(
-                    recipients: 'myEmail@company.com',
-                    subject: "CRITICAL PIPELINE FAILURE: ${config.projectName} [${config.environment.toUpperCase()}]",
-                    useTemplate: true
-                )
-                Logger.error("Pipeline failed for Project: ${config.projectName}")
+            failure {
+                if (config.sendEmailOnFailure) {
+                    sendEmail(
+                        recipients: 'myEmail@company.com',
+                        subject: "CRITICAL PIPELINE FAILURE: ${config.projectName} [${config.environment.toUpperCase()}]",
+                        useTemplate: true
+                    )
+                }
+                log.error("Pipeline failed for Project: ${config.projectName}")
             }
             success {
-                sendEmail(
-                    recipients: 'myEmail@company.com',
-                    subject: "SUCCESSFUL PIPELINE: ${config.projectName} [${config.environment.toUpperCase()}]",
-                    useTemplate: true
-                )
-                Logger.info("Pipeline succeeded for Project: ${config.projectName}")
+                if (config.sendEmailOnFailure) {
+                    sendEmail(
+                        recipients: 'myEmail@company.com',
+                        subject: "SUCCESSFUL PIPELINE: ${config.projectName} [${config.environment.toUpperCase()}]",
+                        useTemplate: true
+                    )
+                }
+                log.info("Pipeline succeeded for Project: ${config.projectName}")
             }
         }
     }
