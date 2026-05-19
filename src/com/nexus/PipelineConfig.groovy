@@ -44,9 +44,12 @@ class PipelineConfig implements Serializable {
     
     // Constructor accepts the raw map AND a fallback name
     PipelineConfig(Map rawConfig, String fallbackName) {
+
+        if (rawConfig == null) rawConfig = [:]
         
         // Use provided projectName, otherwise fall back to the dynamic default
         this.projectName = rawConfig.projectName ?: fallbackName
+        this.environment = rawConfig.environment ?: 'development'
     
         if (rawConfig.environment) this.environment = rawConfig.environment
 
@@ -94,6 +97,13 @@ class PipelineConfig implements Serializable {
 
         if (rawConfig.containsKey('sendEmailNotifications')) {
             this.sendEmailNotifications = rawConfig.sendEmailNotifications as Boolean
+        }
+
+
+        if (rawConfig.securityWhitelist instanceof List) {
+            this.securityWhitelist = rawConfig.securityWhitelist
+        } else {
+            this.securityWhitelist = []
         }
     }
 }

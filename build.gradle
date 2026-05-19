@@ -1,0 +1,48 @@
+// build.gradle
+
+plugins {
+    id 'groovy'
+}
+
+repositories {
+    mavenCentral()
+    // Essential for pulling down specialized Jenkins workflow stubs
+    maven { url 'https://repo.jenkins-ci.org/public/' }
+}
+
+dependencies {
+    // Native Groovy 4 core runtime engine optimized for Java 21
+    implementation 'org.apache.groovy:groovy:4.0.24'
+    implementation 'org.apache.groovy:groovy-json:4.0.24'
+
+    // Injects the official Jenkins workflow CPS engine stubs for @NonCPS support
+    implementation 'com.cloudbees:groovy-cps:1.32'
+
+    // FIXED: Switched group ID coordinates from 'com.homeaway.devtools.jenkins' to 'com.lesfurets'
+    testImplementation 'com.lesfurets:jenkins-pipeline-unit:1.24'
+
+    // Spock framework matched to Groovy 4 hooks
+    testImplementation 'org.spockframework:spock-core:2.3-groovy-4.0'
+    
+    // Standard JUnit 5 execution framework launcher
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// Explicit property mapping for source directories required by Gradle 9.x
+sourceSets {
+    main {
+        groovy.srcDirs = ['src', 'vars']
+    }
+    test {
+        groovy.srcDirs = ['test/groovy']
+    }
+}
+
+test {
+    useJUnitPlatform() // Directs Gradle to utilize the JUnit 5 platform engine
+    
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
+}

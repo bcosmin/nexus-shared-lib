@@ -18,6 +18,7 @@ class SecurityGuard implements Serializable {
     
     ScanResult runComplianceScan() {
         def result = new ScanResult()
+        def slurper = new JsonSlurper()
         
         // 1. RUN TRUFFLEHOG
         steps.echo "[SecurityGuard] Running Secret Scanning via Trufflehog..."
@@ -29,84 +30,83 @@ class SecurityGuard implements Serializable {
         String trivyCmd = 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd):/pwd aquasec/trivy:latest fs /pwd --severity CRITICAL,HIGH --format json --output /pwd/trivy_report.json || true'
         steps.sh(script: trivyCmd)
         
-        // 3. READ REPORT WORKSPACE PAYLOADS
+        // 3. READ & PRE-PARSE REPORT WORKSPACE PAYLOADS
         String truffleJsonText = steps.readFile(file: 'truffle_report.json').trim()
         String trivyJsonText = steps.readFile(file: 'trivy_report.json').trim()
         
-        evaluateReports(result, truffleJsonText, trivyJsonText)
+        List<Map> parsedLeaks = []
+        if (truffleJsonText) {
+            truffleJsonText.eachLine { line ->
+                if (line.trim()) {
+                    try {
+                        parsedLeaks.add(slurper.parseText(line.trim()) as Map)
+                    } catch(e) { }
+                }
+            }
+        }
+        
+        Map parsedTrivy = [:]
+        if (trivyJsonText) {
+            try {
+                parsedTrivy = slurper.parseText(trivyJsonText.trim()) as Map
+            } catch(e) { }
+        }
+        
+        // Hand off clean parsed Map objects directly to the compliance evaluator
+        evaluateParsedData(result, parsedLeaks, parsedTrivy)
+        
+        if (result.hasCriticalIssues() || result.highCvesCount > 0) {
+            throw new RuntimeException(
+                "[COMPLIANCE FAILURE] Security boundaries broken! Found ${result.secretLeaksCount} secrets, ${result.criticalCvesCount} Critical CVEs, and ${result.highCvesCount} High CVEs."
+            )
+        }
         
         return result
     }
     
     @NonCPS
-    private void evaluateReports(ScanResult result, String truffleText, String trivyText) {
-        def slurper = new JsonSlurper()
+    void evaluateParsedData(ScanResult result, List<Map> leaks, Map trivyData) {
+        // Safe whitelist extraction
+        def whitelist = config?.securityWhitelist ? config.securityWhitelist.collect { it.toString().trim() } : []
         
-        // Parse Trufflehog leaks
-        if (truffleText) {
-            try {
-                truffleText.eachLine { line ->
-                    if (line.trim()) {
-                        def leak = slurper.parseText(line)
-                        String fingerprint = leak.Fingerprint ?: ''
-                        
-                        // Check if the secret fingerprint is whitelisted
-                        if (config.securityWhitelist.contains(fingerprint)) {
-                            steps.echo "[SecurityGuard] Whitelisted Secret Leak Skipped: Fingerprint=${fingerprint}"
-                            result.whitelistedIssuesCount++
-                        } else {
-                            steps.echo "[SECURITY RISK] Leaked Secret Found: Source=${leak.SourceID} | Detector=${leak.DetectorName}"
-                            result.secretLeaksCount++
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                steps.echo "[SecurityGuard] Note processing Trufflehog format: ${e.message}"
+        // Process leaks list
+        for (leak in leaks) {
+            // Trim and convert key extraction safely to shield against hidden formatting variants
+            String fingerprint = (leak?.Fingerprint ?: leak?.fingerprint ?: '').toString().trim()
+            if (!fingerprint) continue
+            
+            if (whitelist.contains(fingerprint)) {
+                steps?.echo "[SecurityGuard] Whitelisted Secret Leak Skipped: Fingerprint=${fingerprint}"
+                result.whitelistedIssuesCount++
+            } else {
+                steps?.echo "[SECURITY RISK] Leaked Secret Found!"
+                result.secretLeaksCount++
             }
         }
         
-        // Parse Trivy vulnerabilities
-        if (trivyText) {
-            try {
-                def trivyData = slurper.parseText(trivyText)
-                
-                if (trivyData?.Results) {
-                    trivyData.Results.each { target ->
-                        if (target?.Vulnerabilities) {
-                            target.Vulnerabilities.each { vuln ->
-                                String cveId = vuln.VulnerabilityID ?: ''
-                                
-                                // Check if this specific CVE ID is whitelisted
-                                if (config.securityWhitelist.contains(cveId)) {
-                                    steps.echo "[SecurityGuard] Whitelisted CVE Skipped: ${cveId}"
-                                    result.whitelistedIssuesCount++
-                                } else {
-                                    if (vuln.Severity == 'CRITICAL') {
-                                        result.criticalCvesCount++
-                                    } else if (vuln.Severity == 'HIGH') {
-                                        result.highCvesCount++
-                                    }
-                                }
+        // Process trivy vulnerabilities object structure
+        if (trivyData?.Results) {
+            trivyData.Results.each { target ->
+                if (target?.Vulnerabilities) {
+                    target.Vulnerabilities.each { vuln ->
+                        String cveId = (vuln?.VulnerabilityID ?: vuln?.vulnerabilityId ?: '').toString().trim()
+                        String severity = (vuln?.Severity ?: vuln?.severity ?: '').toString().trim().toUpperCase()
+                        if (!cveId) return
+                        
+                        if (whitelist.contains(cveId)) {
+                            steps?.echo "[SecurityGuard] Whitelisted CVE Skipped: ${cveId}"
+                            result.whitelistedIssuesCount++
+                        } else {
+                            if (severity == 'CRITICAL') {
+                                result.criticalCvesCount++
+                            } else if (severity == 'HIGH') {
+                                result.highCvesCount++
                             }
                         }
                     }
                 }
-            } catch (Exception e) {
-                steps.echo "[SecurityGuard] Note processing Trivy JSON layout: ${e.message}"
             }
         }
-        
-        // Render detailed compliance dashboard summary
-        steps.echo """
-        ==================================================
-        SECURITY COMPLIANCE SUMMARY FOR ${config.projectName.toUpperCase()}
-        ==================================================
-        - Hardcoded Secret Leaks Found:    ${result.secretLeaksCount}
-        - Critical Vulnerabilities (CVEs): ${result.criticalCvesCount}
-        - High Vulnerabilities (CVEs):     ${result.highCvesCount}
-        - Approved Exceptions Bypassed:    ${result.whitelistedIssuesCount}
-        ==================================================
-        """.stripIndent()
     }
 }
 

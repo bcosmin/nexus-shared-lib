@@ -1,6 +1,33 @@
-.vscode/
-*.log
-.DS_Store
-target/
+# ==========================================
+# Gradle Build & Lifecycle Outputs
+# ==========================================
+.gradle/
 build/
+out/
+.gradle-test-readiness*
+
+# ==========================================
+# JetBrains / IntelliJ IDEA Workspace
+# ==========================================
 .idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# ==========================================
+# VS Code Configuration
+# ==========================================
+.vscode/
+
+# ==========================================
+# Local Security Scan Output Payloads
+# ==========================================
+truffle_report.json
+trivy_report.json
+
+# ==========================================
+# System / OS Artifacts
+# ==========================================
+.DS_Store
+Thumbs.db

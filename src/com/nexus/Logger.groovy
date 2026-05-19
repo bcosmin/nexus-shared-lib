@@ -2,30 +2,27 @@
 
 package com.nexus
 
-class Logger {
-    static void info(String message) {
-        echo "INFO: ${message}"
-    }
+import java.io.Serializable
 
-    static void warn(String message) {
-        echo "WARNING: ${message}"
+class Logger implements Serializable {
+    
+    private final def steps
+    
+    Logger(def steps) {
+        this.steps = steps
     }
-
-    static void error(String message) {
-        echo "ERROR: ${message}"
-        currentBuild.result = 'FAILURE'
+    
+    void info(String message) {
+        steps.echo "[INFO] ${message}"
     }
-
-    static void fatal(String message) {
-        echo "FATAL: ${message}"
-        currentBuild.result = 'FAILURE'
+    
+    void warn(String message) {
+        steps.echo "[WARN] ⚠️ ${message}"
     }
-
-    static void debug(String message) {
-        echo "DEBUG: ${message}"
-    }
-
-    static void trace(String message) {
-        echo "TRACE: ${message}"
+    
+    void error(String message) {
+        steps.echo "[ERROR] ❌ ${message}"
+        // FIXED: Explicitly referencing the global pipeline script context variable
+        steps.currentBuild.result = 'FAILURE'
     }
 }
