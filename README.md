@@ -29,30 +29,55 @@ nexusPipeline(
 
 **Configuration Parameters:**
 
-* `projectName` (String): The name of the project. If not provided, it falls back to the Jenkins job name.
-* `environment` (String): Target environment (default: `development`).
-* `runSecurityScan` (Boolean): Feature toggle to run the mock secret scanner (default: `true`).
-* `optimizeCosts` (Boolean): Feature toggle to run the infrastructure cost optimization analysis (default: `false`).
+*   `projectName` (String): The name of the project. If not provided, it falls back to the Jenkins job name (`env.JOB_BASE_NAME`).
+*   `environment` (String): Target deployment environment (e.g., `'development'`, `'staging'`, `'production'`). Default: `'development'`.
 
-### 2. S3 Deployment (`deployS3.groovy`)
+*   **Feature Toggles:**
+    *   `runSecurityScan` (Boolean): Enables/disables the security compliance scan. Default: `true`.
+    *   `optimizeCosts` (Boolean): Enables/disables the cloud cost optimization analysis. Default: `false`.
+    *   `uploadArtifactsToS3` (Boolean): Enables/disables artifact upload to AWS S3. Default: `false`.
+    *   `buildAndPushDocker` (Boolean): Enables/disables Docker image build and push to a registry. Default: `false`.
+    *   `uploadToArtifactory` (Boolean): Enables/disables artifact upload to JFrog Artifactory. Default: `false`.
+    *   `sendEmailNotifications` (Boolean): Enables/disables email notifications on pipeline success/failure. Default: `false`.
 
-A helper step to sync a local directory to an AWS S3 bucket. It automatically fetches the appropriate AWS credentials and bucket names based on the target environment using `resources/scripts/configS3.yaml`.
+*   **AWS S3 Configuration** (only relevant if `uploadArtifactsToS3` is `true`):
+    *   `s3Bucket` (String): The target S3 bucket name.
+    *   `awsRegion` (String): The AWS region for the S3 bucket.
+    *   `awsCredentialsId` (String): Jenkins Credential ID for AWS access.
+
+*   **Docker Configuration** (only relevant if `buildAndPushDocker` is `true`):
+    *   `dockerRegistry` (String): The URL of the Docker registry (e.g., `'my.private.docker.registry.com'`).
+    *   `dockerCredentialsId` (String): Jenkins Credential ID for Docker registry login.
+    *   `dockerRepoName` (String): The target repository name for the image.
+
+*   **JFrog Artifactory Configuration** (only relevant if `uploadToArtifactory` is `true`):
+    *   `artifactoryServerId` (String): The Artifactory server ID configured in Jenkins.
+    *   `artifactoryTargetRepo` (String): The target repository in Artifactory.
+    *   `artifactoryCredentialsId` (String): Jenkins Credential ID for Artifactory access.
+    *   `artifactoryPattern` (String): A file pattern for artifacts to upload.
+
+*   **Security Whitelist Configuration:**
+    *   `securityWhitelist` (List<String>): A list of CVE IDs or secret hashes to be ignored by the `SecurityGuard`.
+
+*   **Extension Points** (Closures for custom logic at various pipeline stages):
+    *   `beforeBuild` (Closure): Executed before the main 'Build' stage.
+    *   `afterBuild` (Closure): Executed after the main 'Build' stage.
+    *   `beforeDeploy` (Closure): Executed before the 'Docker Build and Push' or 'Upload Artifacts' stages.
+    *   `afterDeploy` (Closure): Executed after all deployment-related stages.
+
+### 2. S3 Deployment (`deployArtifactsS3.groovy`)
+
+A helper step to sync a local directory to an AWS S3 bucket.
 
 **Usage:**
 
 ```groovy
 stage('Deploy to S3') {
     steps {
-        deployS3('staging', './build-output')
+        deployArtifactsS3('my-s3-bucket', 'eu-central-1', './build-output', 'my-aws-credentials-id')
     }
 }
 ```
-
-**Supported Environments:**
-Environments and their respective configurations are managed in `resources/scripts/configS3.yaml`. Currently supported:
-
-* `production`
-* `staging`
 
 ### 3. Security Guard (`SecurityGuard.groovy`)
 
@@ -81,19 +106,6 @@ stage('Send Notification') {
         )
     }
 }
-```
-
-### S3 Configuration (`configS3.yaml`)
-
-Update `resources/scripts/configS3.yaml` to change bucket names or deployment regions:
-
-```yaml
-production:
-  bucketName: nexus-production-bucket
-  region: eu-central-1
-staging:
-  bucketName: nexus-staging-bucket
-  region: eu-central-1
 ```
 
 ## Contributing
