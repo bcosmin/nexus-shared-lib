@@ -1,5 +1,4 @@
 #!/usr/bin/env groovy
-// vars/standardPipeline.groovy
 
 import com.nexus.PipelineConfig
 import com.nexus.SecurityGuard

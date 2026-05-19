@@ -20,6 +20,13 @@ class PipelineConfig implements Serializable {
     String awsRegion = 'us-east-1'
     String awsCredentialsId = 'awsToken' // Jenkins Credential ID for AWS access
 
+    // JFrog Artifactory Configuration
+    Boolean uploadToArtifactory = false
+    String artifactoryServerId = 'jfrog-enterprise-server'
+    String artifactoryTargetRepo = 'generic-local'
+    String artifactoryCredentialsId = 'artifactoryToken' // Jenkins Credential ID for Artifactory access
+    String artifactoryPattern = '**/*' // Default to uploading all workspace files
+
     // Container lifecycle configuration
     Boolean buildAndPushDocker = false
     String dockerRegistry = 'index.docker.io/v1/'
@@ -42,10 +49,19 @@ class PipelineConfig implements Serializable {
         this.projectName = rawConfig.projectName ?: fallbackName
     
         if (rawConfig.environment) this.environment = rawConfig.environment
+
+        // AWS S3 settings
         if (rawConfig.s3Bucket) this.s3Bucket = rawConfig.s3Bucket
         if (rawConfig.awsRegion) this.awsRegion = rawConfig.awsRegion
         if (rawConfig.awsCredentialsId) this.awsCredentialsId = rawConfig.awsCredentialsId
 
+        // Artifactory settings
+        if (rawConfig.artifactoryServerId) this.artifactoryServerId = rawConfig.artifactoryServerId
+        if (rawConfig.artifactoryTargetRepo) this.artifactoryTargetRepo = rawConfig.artifactoryTargetRepo
+        if (rawConfig.artifactoryPattern) this.artifactoryPattern = rawConfig.artifactoryPattern
+        if (rawConfig.artifactoryCredentialsId) this.artifactoryCredentialsId = rawConfig.artifactoryCredentialsId
+
+        // Docker settings
         if (rawConfig.dockerRegistry) this.dockerRegistry = rawConfig.dockerRegistry
         if (rawConfig.dockerCredentialsId) this.dockerCredentialsId = rawConfig.dockerCredentialsId
         if (rawConfig.dockerRepoName) this.dockerRepoName = rawConfig.dockerRepoName
@@ -71,6 +87,11 @@ class PipelineConfig implements Serializable {
         if (rawConfig.containsKey('uploadArtifactsToS3')) {
             this.uploadArtifactsToS3 = rawConfig.uploadArtifactsToS3 as Boolean
         }
+
+        if (rawConfig.containsKey('uploadToArtifactory')) {
+            this.uploadToArtifactory = rawConfig.uploadToArtifactory as Boolean
+        }
+
         if (rawConfig.containsKey('sendEmailNotifications')) {
             this.sendEmailNotifications = rawConfig.sendEmailNotifications as Boolean
         }
