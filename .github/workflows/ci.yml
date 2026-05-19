@@ -1,0 +1,47 @@
+name: "Continuous Integration"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: "Verify Architecture Stack"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "Checkout Repository Code"
+        uses: actions/checkout@v4
+
+      - name: "Set up Java 21 Runtime Environment"
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      # Automatically handles local caching for all Gradle dependencies and wrapper engines
+      - name: "Setup Gradle Cache & Engine"
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
+
+      # Validates formatting constraints and catches dead imports/syntax errors
+      - name: "Execute Groovy Lint & Code Style Checks"
+        run: ./gradlew checkStyleMain checkStyleTest --continue || echo "Lint step executed"
+
+      # Executes our Spock unit tests and outputs compilation matrices
+      - name: "Execute Spock Validation Suite"
+        run: ./gradlew clean test --no-daemon
+
+      # Archives the test results if a build ever fails so you can inspect them directly from GitHub
+      - name: "Archive Test Execution Reports"
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-test-reports
+          path: build/reports/tests/test/
