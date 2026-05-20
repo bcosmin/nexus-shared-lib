@@ -1,4 +1,4 @@
-@Library('nexus-shared-lib@master') _ // Use 'master' or your specific branch name
+@Library('nexus-shared-lib@main') _ // Use 'main' or your specific branch name
 
 // This Jenkinsfile demonstrates the full capabilities of the nexusPipeline
 // provided by the 'nexus-shared-lib'.
