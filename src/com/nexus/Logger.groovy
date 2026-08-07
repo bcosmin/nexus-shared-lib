@@ -13,22 +13,20 @@ class Logger implements Serializable {
     }
 
     void info(String message) {
-        steps.echo "[INFO] '\u2139\ufe0f' ${message}.toString()"
+        steps.echo "[INFO] ℹ️ ${message}"
     }
 
-
     void warn(String message) {
-        steps.echo "[WARN] ⚠️ ${message}.toString()"
-        step.currentBuild.result = 'WARRNING'
+        steps.echo "[WARN] ⚠️ ${message}"
+        steps.currentBuild.result = 'UNSTABLE'
     }
 
     void success(String message) {
-        steps.echo "[SUCCESS] ✅ ${message}.toString()"
-        step.currentBuild.result = 'SUCCESS'
+        steps.echo "[SUCCESS] ✅ ${message}"
     }
 
     void error(String message) {
-        steps.echo "[ERROR] ❌ ${message}.toString()"
-        step.currentBuild.result = 'FAILURE'
+        steps.echo "[ERROR] ❌ ${message}"
+        steps.currentBuild.result = 'FAILURE'
     }
 }
