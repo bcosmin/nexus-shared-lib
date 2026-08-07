@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -24,6 +27,9 @@ jobs:
 
       - name: Run Linter and Tests
         run: ./gradlew codenarcMain test
+
+      - name: Build Library JAR
+        run: ./gradlew jar
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
