@@ -87,5 +87,5 @@ For deep-dive configurations, advanced setups, and internal guidelines, please r
 
 Check the `examples/` directory for ready-to-use boilerplate code:
 
-* [Basic Pipeline](examples/basic-pipeline.groovy) — Minimal setup for quick builds.
-* [Complex Pipeline](examples/complex-pipeline.groovy) — Full configuration with security, containerization, and K8s deployment.
+* [Basic Pipeline](example/basic-pipeline.groovy) — Minimal setup for quick builds.
+* [Complex Pipeline](example/complex-pipeline.groovy) — Full configuration with security, containerization, and K8s deployment.
