@@ -1,11 +1,10 @@
 #!/usr/bin/env groovy
-// vars/sendEmail.groovy
 
 import com.nexus.Logger
 
 def call(Map params = [:]) {
-    // Instantiate a logger instance or use context if it's not a purely static utility
-    def log = new Logger()
+
+    Logger log = new Logger(this)
 
     if (params.recipients == null || params.recipients.isEmpty()) {
         log.error('Please provide at least one recipient email address.')
@@ -17,28 +16,28 @@ def call(Map params = [:]) {
     }
 
     if (params.body == null || params.body.isEmpty()) {
-        params.body = "Job name: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER} - result: ${currentBuild.currentResult}"
+        params.body = "This is an automated email from Jenkins.\n\nJob: ${env.JOB_NAME}\nBuild Number: ${env.BUILD_NUMBER}\nBuild URL: ${env.BUILD_URL}\nResults: ${currentBuild.currentResult}"
     }
 
     def emailBodyContent
     // Default to true if not specified, or if explicitly true
-    if (params.useTemplate == null || params.useTemplate == true) {
+    if (params.useTemplate == null || params.useTemplate) {
         emailBodyContent = emailTemplate(params.body)
-    } else { 
+    } else {
         emailBodyContent = params.body
     }
 
     try {
-        // Enforcing the standard Email Extension plugin step
-        emailext (
-            to: params.recipients,
+        emailext(
             subject: params.subject,
-            mimeType: 'text/html',
-            body: emailBodyContent
+            body: emailBodyContent,
+            to: params.recipients.join(','),
+            mimeType: 'text/html'
         )
-        log.info("Email sent successfully to ${params.recipients}.")
+        log.info("Email sent successfully to: ${params.recipients.join(', ')}")
     } catch (Exception e) {
         log.error("Failed to send email: ${e.message}")
+        error "Email step failed: ${e.message}"
     }
 }
 

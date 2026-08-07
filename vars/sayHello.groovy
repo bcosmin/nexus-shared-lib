@@ -1,10 +1,9 @@
 #!/usr/bin/env groovy
 
-//vars/sayHello.groovy
 package com.nexus
 
 import com.nexus.Logger
 
-def call (String name = "World") {
+def call(String name = 'NexusSharedLib') {
     Logger.info("Hello, ${name}!")
 }

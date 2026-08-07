@@ -1,105 +1,82 @@
-# Nexus Jenkins Shared Library
+# Nexus Shared Pipeline Library
 
-This Jenkins Shared Library provides standardized pipelines, security checks, deployment scripts, and cost optimization utilities for projects at Nexus.
+A centralized Jenkins Shared Library designed to standardize, secure, and accelerate the CI/CD lifecycle across company microservices. It encapsulates complex declarative workflows into a clean, unified pipeline wrapper.
 
-## Directory Structure
+---
 
-* `src/com/nexus/`: Groovy classes providing core logic (e.g., `PipelineConfig`, `SecurityGuard`, `CostOptimizer`).
-* `vars/`: Global Jenkins variables and pipeline scripts that can be called directly from a `Jenkinsfile`.
-* `resources/`: Static resources and configuration files (e.g., S3 configurations).
+## Architecture & Pipeline Flow
 
-## Features
+```mermaid
+graph TD
+    A[Jenkinsfile / PR Event] --> B[Initialization & Checkout]
+    B --> C{Security Compliance Scan}
+    C -- SonarQube / Trufflehog / Trivy --> D[Pre-Build Extensions]
+    D --> E[Build Application<br/>Gradle / Maven]
+    E --> F{Docker Build & Push?}
 
-### 1. Standard Pipeline (`nexusPipeline.groovy`)
+    F -- Yes --> G[Container Distribution]
+    F -- No --> H{Artifact Distribution?}
 
-A declarative pipeline wrapper that standardizes the CI process across multiple projects. It includes stages for Initialization, Security Compliance Scanning, Building, and Cloud Cost Optimization.
+    G --> H
+    H -- S3 / JFrog Artifactory --> I{Deploy to Kubernetes?}
 
-**Usage in `Jenkinsfile`:**
+    I -- Helm + Safe Rollback --> J[Post-Deployment Extensions]
+    I -- No --> J
+
+    J --> K[Post Execution Hooks]
+    K --> L[Multi-Channel Notifications<br/>Email / Slack / Teams]
+```
+
+---
+
+## Quick Start
+
+To utilize this shared library in your project, reference it at the top of your Jenkinsfile and invoke the nexusPipeline wrapper:
 
 ```groovy
-@Library('nexus-shared-lib') _
+@Library('nexus-shared-lib@v1.0.0') _
 
-nexusPipeline(
-    projectName: 'my-awesome-microservice',
-    environment: 'staging',
+nexusPipeline([
+    projectName: 'my-microservice',
+    environment: 'production',
+    buildTool: 'gradle',
+
+    // Code Quality & Security
     runSecurityScan: true,
-    optimizeCosts: false
-)
+    runAdvancedSecurityGuard: true,
+
+    // Containerization
+    buildAndPushDocker: true,
+    dockerRegistry: 'registry.company.io',
+    dockerImageName: 'nexus/my-microservice',
+    dockerCredentialsId: 'docker-registry-credentials',
+
+    // Artifact Distribution
+    uploadToArtifactory: true,
+    artifactoryTargetRepo: 'libs-release-local',
+
+    // Kubernetes / Helm Deployment
+    deployToK8s: true,
+    helmReleaseName: 'my-microservice',
+    helmChartPath: './charts/my-microservice',
+    helmNamespace: 'production',
+
+    // Multi-Channel Notifications
+    notificationEmail: 'devops-alerts@company.com',
+    slackChannel: '#deployments',
+    teamsWebhookUrl: '[https://outlook.office.com/webhook/](https://outlook.office.com/webhook/)...'
+])
 ```
 
-**Configuration Parameters:**
+---
 
-* `projectName` (String): The name of the project. If not provided, it falls back to the Jenkins job name.
-* `environment` (String): Target environment (default: `development`).
-* `runSecurityScan` (Boolean): Feature toggle to run the mock secret scanner (default: `true`).
-* `optimizeCosts` (Boolean): Feature toggle to run the infrastructure cost optimization analysis (default: `false`).
+## Documentation Structure
 
-### 2. S3 Deployment (`deployS3.groovy`)
+For deep-dive configurations, advanced setups, and internal guidelines, please refer to the `docs/` directory:
 
-A helper step to sync a local directory to an AWS S3 bucket. It automatically fetches the appropriate AWS credentials and bucket names based on the target environment using `resources/scripts/configS3.yaml`.
-
-**Usage:**
-
-```groovy
-stage('Deploy to S3') {
-    steps {
-        deployS3('staging', './build-output')
-    }
-}
-```
-
-**Supported Environments:**
-Environments and their respective configurations are managed in `resources/scripts/configS3.yaml`. Currently supported:
-
-* `production`
-* `staging`
-
-### 3. Security Guard (`SecurityGuard.groovy`)
-
-A utility class that runs mock secret scanning to ensure hardcoded credentials aren't pushed to the repository. If leaked secrets are detected, the pipeline will abort.
-
-### 4. Cost Optimizer (`CostOptimizer.groovy` / `costOptimizeNodes.groovy`)
-
-A utility to analyze Jenkins node clusters and identify idle instances that have been running for too long, mapping out potential cost savings by pruning them.
-
-## Configuration
-
-### 5. Email Notifications (`sendEmail.groovy`)
-
-A utility step to send email notifications from the pipeline. It supports custom subjects, bodies, and an HTML template for consistent formatting.
-
-**Usage:**
-
-```groovy
-stage('Send Notification') {
-    steps {
-        sendEmail(
-            recipients: 'dev-team@example.com, qa-team@example.com',
-            subject: "Build ${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
-            body: "The build for ${env.JOB_NAME} completed with status: ${currentBuild.currentResult}.",
-            useTemplate: true // Set to false to send plain text body
-        )
-    }
-}
-```
-
-### S3 Configuration (`configS3.yaml`)
-
-Update `resources/scripts/configS3.yaml` to change bucket names or deployment regions:
-
-```yaml
-production:
-  bucketName: nexus-production-bucket
-  region: eu-central-1
-staging:
-  bucketName: nexus-staging-bucket
-  region: eu-central-1
-```
-
-## Contributing
-
-When adding new features:
-
-1. Add pipeline wrappers or standalone steps to the `vars/` folder.
-2. Add complex business logic and helper classes to the `src/com/nexus/` folder.
-3. Ensure that non-serializable operations in `src/` use `@NonCPS` where necessary (e.g., standard Groovy `for` loops).
+* [Jenkins Setup Guide](docs/jenkins-setup.md) - Prerequisites and global library configuration in Jenkins.
+* [Vars Guide](docs/vars-guide.md) - Comprehensive overview of available global utility functions.
+* [Adding New Vars](docs/contributing-vars.md) — Standard template and best practices for creating new global pipeline functions.
+* [Configuration Parameters](docs/parameters.md) — Complete list of options available in PipelineConfig.
+* [Custom Extension Hooks](docs/custom-hooks.md) — Injecting custom closures (beforeBuild, afterBuild, etc.).
+* [Security & Compliance Guard](docs/security.md) — Overview of Trufflehog secret leaks and Trivy vulnerability enforcement.

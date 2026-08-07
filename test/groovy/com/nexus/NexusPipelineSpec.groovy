@@ -2,43 +2,41 @@
 
 package com.nexus
 
-class NexusPipelineSpec extends BasePipelineSpec {
+import com.lesfurets.jenkins.unit.BasePipelineTest
+import spock.lang.Specification
 
-    def "should execute successfully when parsing default standard configuration settings"() {
-        given: "A basic configuration payload map"
-        def configMap = [
-            projectName: 'unit-test-app',
-            runSecurityScan: false
-        ]
+class NexusPipelineSpec extends BasePipelineTest {
 
-        when: "The global orchestrator nexusPipeline step is called"
-        def script = loadScript('vars/nexusPipeline.groovy')
-        script.call(configMap)
+    void setup() {
+        super.setUp()
+        binding.setVariable('env', [
+            JOB_NAME: 'test-pipeline',
+            BUILD_NUMBER: '1',
+            BUILD_URL: 'http://localhost/job/test-pipeline/1/'
+        ])
 
-        then: "The script compiles and executes without throwing lifecycle engine errors"
-        noExceptionThrown()
-
-        and: "The orchestrator successfully verified execution status"
-        // Correctly reading from the inherited engine instance status state property
-        this.status == com.lesfurets.jenkins.unit.global.lib.JobStatus.SUCCESS
+        // Înregistrăm metodele globale/shared library mock-uite pentru a nu da erori la apel
+        helper.registerAllowedMethod('scmCheckout', [Map.class], { return [GIT_COMMIT: 'abcdef123456'] })
+        helper.registerAllowedMethod('sonarqubeScan', [Map.class], { return null })
+        helper.registerAllowedMethod('notifyBuildStatus', [Map.class], { return null })
     }
 
-    def "should attempt to trigger JFrog Artifactory distribution logic only when uploadToArtifactory toggle is true"() {
-        given: "An explicit configuration instructing a binary upload target"
-        def configMap = [
-            projectName: 'distribution-service',
-            runSecurityScan: false,
-            uploadToArtifactory: true
-        ]
+    def "should execute nexusPipeline and invoke security and checkout steps when enabled"() {
+        when:
+        loadScript('vars/nexusPipeline.groovy').call([
+            projectName: 'demo-app',
+            environment: 'dev',
+            buildTool: 'gradle',
+            runSecurityScan: true,
+            buildAndPushDocker: false,
+            uploadToArtifactory: false,
+            deployToK8s: false
+        ])
 
-        // Register the dynamic target step macro hook directly into the framework context instance
-        registerAllowedMethod('uploadToArtifactoryServer', [Map], null)
-
-        when: "Executing the centralized nexusPipeline framework script context"
-        def script = loadScript('vars/nexusPipeline.groovy')
-        script.call(configMap)
-
-        then: "The framework completes smoothly"
-        noExceptionThrown()
+        then:
+        // Verificăm că pașii au fost efectivamente apelați în timpul execuției pipeline-ului
+        assert helper.callStack.findAll { it.methodName == 'scmCheckout' }.size() > 0
+        assert helper.callStack.findAll { it.methodName == 'sonarqubeScan' }.size() > 0
+        jobStatus == 'SUCCESS'
     }
 }

@@ -2,108 +2,104 @@
 
 package com.nexus
 
-import java.io.Serializable
-
 class PipelineConfig implements Serializable {
-    // Project Metadata
+
+    // General configuration
     String projectName
-    String environment = 'development'
-    
-    // Feature Toggles
-    Boolean runSecurityScan = true
-    Boolean optimizeCosts = false
-    Boolean uploadArtifactsToS3 = true
-    Boolean sendEmailNotifications = true
+    String environment
+    String branch
+    String gitCredentialsId
 
-    // AWS S3 Configuration
-    String s3Bucket = 'my-default-bucket'
-    String awsRegion = 'us-east-1'
-    String awsCredentialsId = 'awsToken' // Jenkins Credential ID for AWS access
+    // Security & Code Quality
+    boolean runSecurityScan
+    String buildTool
+    String sonarAdditionalArgs
 
-    // JFrog Artifactory Configuration
-    Boolean uploadToArtifactory = false
-    String artifactoryServerId = 'jfrog-enterprise-server'
-    String artifactoryTargetRepo = 'generic-local'
-    String artifactoryCredentialsId = 'artifactoryToken' // Jenkins Credential ID for Artifactory access
-    String artifactoryPattern = '**/*' // Default to uploading all workspace files
+    // Build & Containerization
+    boolean buildAndPushDocker
+    String dockerRegistry
+    String dockerImageName
+    String dockerfilePath
+    String dockerCredentialsId
 
-    // Container lifecycle configuration
-    Boolean buildAndPushDocker = false
-    String dockerRegistry = 'index.docker.io/v1/'
-    String dockerCredentialsId = 'dockerToken' // Jenkins Credential ID for Docker registry access
-    String dockerRepoName = 'my-app'
+    // S3 Artifact Distribution
+    boolean uploadArtifactsToS3
+    String s3Bucket
+    String s3SourcePath
+    String awsRegion
+    String awsCredentialsId
 
-    // Security Whitelist Configuration (Array of strings like CVE IDs or Secret hashes)
-    List<String> securityWhitelist = []
+    // JFrog Artifactory Distribution
+    boolean uploadToArtifactory
+    String artifactoryServerId
+    String artifactoryTargetRepo
+    String artifactoryArtifactPath
 
-    // Predefined developer execution hooks
-    Closure beforeBuild = null
-    Closure afterBuild = null
-    Closure beforeDeploy = null
-    Closure afterDeploy = null
-    
-    // Constructor accepts the raw map AND a fallback name
-    PipelineConfig(Map rawConfig, String fallbackName) {
+    // Kubernetes & Helm Deployment
+    boolean deployToK8s
+    String helmReleaseName
+    String helmChartPath
+    String helmNamespace
+    Map helmSetValues
 
-        if (rawConfig == null) rawConfig = [:]
-        
-        // Use provided projectName, otherwise fall back to the dynamic default
-        this.projectName = rawConfig.projectName ?: fallbackName
-        this.environment = rawConfig.environment ?: 'development'
-    
-        if (rawConfig.environment) this.environment = rawConfig.environment
+    // Custom Extension Hooks (Closures)
+    Closure beforeBuild
+    Closure afterBuild
+    Closure beforeDeploy
+    Closure afterDeploy
 
-        // AWS S3 settings
-        if (rawConfig.s3Bucket) this.s3Bucket = rawConfig.s3Bucket
-        if (rawConfig.awsRegion) this.awsRegion = rawConfig.awsRegion
-        if (rawConfig.awsCredentialsId) this.awsCredentialsId = rawConfig.awsCredentialsId
+    // Notifications
+    String notificationEmail
+    boolean notifyOnSuccess
+    String teamsWebhookUrl
+    String slackChannel
 
-        // Artifactory settings
-        if (rawConfig.artifactoryServerId) this.artifactoryServerId = rawConfig.artifactoryServerId
-        if (rawConfig.artifactoryTargetRepo) this.artifactoryTargetRepo = rawConfig.artifactoryTargetRepo
-        if (rawConfig.artifactoryPattern) this.artifactoryPattern = rawConfig.artifactoryPattern
-        if (rawConfig.artifactoryCredentialsId) this.artifactoryCredentialsId = rawConfig.artifactoryCredentialsId
+    /**
+     * Constructor that hydrates the configuration map provided in the Jenkinsfile.
+     * @param configMap The map passed from the Jenkinsfile pipeline call
+     * @param fallbackProjectName Dynamic project name fallback if not specified
+     */
+    PipelineConfig(Map configMap = [:], String fallbackProjectName = 'nexus-unknown-fallback') {
+        this.projectName         = configMap.projectName ?: fallbackProjectName
+        this.environment         = configMap.environment ?: 'development'
+        this.branch              = configMap.branch ?: 'main'
+        this.gitCredentialsId    = configMap.gitCredentialsId ?: ''
 
-        // Docker settings
-        if (rawConfig.dockerRegistry) this.dockerRegistry = rawConfig.dockerRegistry
-        if (rawConfig.dockerCredentialsId) this.dockerCredentialsId = rawConfig.dockerCredentialsId
-        if (rawConfig.dockerRepoName) this.dockerRepoName = rawConfig.dockerRepoName
-        
+        this.runSecurityScan     = configMap.runSecurityScan != null ? configMap.runSecurityScan : false
+        this.buildTool           = configMap.buildTool ?: 'gradle'
+        this.sonarAdditionalArgs = configMap.sonarAdditionalArgs ?: ''
 
-        // Safely map incoming closures if provided by the developer
-        if (rawConfig.beforeBuild instanceof Closure) this.beforeBuild = rawConfig.beforeBuild
-        if (rawConfig.afterBuild instanceof Closure) this.afterBuild = rawConfig.afterBuild
-        if (rawConfig.beforeDeploy instanceof Closure) this.beforeDeploy = rawConfig.beforeDeploy
-        if (rawConfig.afterDeploy instanceof Closure) this.afterDeploy = rawConfig.afterDeploy
-        
-        // Explicit null-checks to preserve boolean defaults
-        if (rawConfig.containsKey('runSecurityScan')) {
-            this.runSecurityScan = rawConfig.runSecurityScan as Boolean
-        }
-        if (rawConfig.containsKey('optimizeCosts')) {
-            this.optimizeCosts = rawConfig.optimizeCosts as Boolean
-        }
+        this.buildAndPushDocker  = configMap.buildAndPushDocker != null ? configMap.buildAndPushDocker : false
+        this.dockerRegistry      = configMap.dockerRegistry ?: ''
+        this.dockerImageName     = configMap.dockerImageName ?: this.projectName
+        this.dockerfilePath      = configMap.dockerfilePath ?: 'Dockerfile'
+        this.dockerCredentialsId = configMap.dockerCredentialsId ?: ''
 
-        if (rawConfig.containsKey('buildAndPushDocker')) {
-            this.buildAndPushDocker = rawConfig.buildAndPushDocker as Boolean
-        }
-        if (rawConfig.containsKey('uploadArtifactsToS3')) {
-            this.uploadArtifactsToS3 = rawConfig.uploadArtifactsToS3 as Boolean
-        }
+        this.uploadArtifactsToS3 = configMap.uploadArtifactsToS3 != null ? configMap.uploadArtifactsToS3 : false
+        this.s3Bucket            = configMap.s3Bucket ?: ''
+        this.s3SourcePath        = configMap.s3SourcePath ?: 'build/libs'
+        this.awsRegion           = configMap.awsRegion ?: 'eu-central-1'
+        this.awsCredentialsId    = configMap.awsCredentialsId ?: 'aws-s3-credentials'
 
-        if (rawConfig.containsKey('uploadToArtifactory')) {
-            this.uploadToArtifactory = rawConfig.uploadToArtifactory as Boolean
-        }
+        this.uploadToArtifactory = configMap.uploadToArtifactory != null ? configMap.uploadToArtifactory : false
+        this.artifactoryServerId = configMap.artifactoryServerId ?: 'artifactory-server'
+        this.artifactoryTargetRepo = configMap.artifactoryTargetRepo ?: 'libs-release-local'
+        this.artifactoryArtifactPath = configMap.artifactoryArtifactPath ?: 'build/libs'
 
-        if (rawConfig.containsKey('sendEmailNotifications')) {
-            this.sendEmailNotifications = rawConfig.sendEmailNotifications as Boolean
-        }
+        this.deployToK8s         = configMap.deployToK8s != null ? configMap.deployToK8s : false
+        this.helmReleaseName     = configMap.helmReleaseName ?: this.projectName
+        this.helmChartPath       = configMap.helmChartPath ?: './charts'
+        this.helmNamespace       = configMap.helmNamespace ?: 'default'
+        this.helmSetValues       = configMap.helmSetValues ?: [:]
 
+        this.beforeBuild         = configMap.beforeBuild
+        this.afterBuild          = configMap.afterBuild
+        this.beforeDeploy        = configMap.beforeDeploy
+        this.afterDeploy         = configMap.afterDeploy
 
-        if (rawConfig.securityWhitelist instanceof List) {
-            this.securityWhitelist = rawConfig.securityWhitelist
-        } else {
-            this.securityWhitelist = []
-        }
+        this.notificationEmail   = configMap.notificationEmail ?: ''
+        this.notifyOnSuccess     = configMap.notifyOnSuccess != null ? configMap.notifyOnSuccess : false
+        this.teamsWebhookUrl     = configMap.teamsWebhookUrl ?: ''
+        this.slackChannel        = configMap.slackChannel ?: ''
     }
 }
