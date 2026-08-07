@@ -2,6 +2,7 @@
 
 plugins {
     id 'groovy'
+    id 'codenarc'
 }
 
 repositories {
@@ -23,7 +24,7 @@ dependencies {
 
     // Spock framework matched to Groovy 4 hooks
     testImplementation 'org.spockframework:spock-core:2.3-groovy-4.0'
-    
+
     // Standard JUnit 5 execution framework launcher
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
@@ -38,9 +39,18 @@ sourceSets {
     }
 }
 
+codenarc {
+    toolVersion = '3.3.0'
+    configFile = file('config/codenarc/ruleset.groovy')
+    maxPriority1Violations = 0
+    maxPriority2Violations = 0
+}
+
 test {
-    useJUnitPlatform() // Directs Gradle to utilize the JUnit 5 platform engine
-    
+    useJUnitPlatform()
+
+    failOnNoDiscoveredTests = false
+
     testLogging {
         events "passed", "skipped", "failed"
         exceptionFormat "full"

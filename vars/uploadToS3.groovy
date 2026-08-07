@@ -1,37 +1,54 @@
 #!/usr/bin/env groovy
+
 import com.nexus.Logger
 
 def call(Map params = [:]) {
-    
-    def bucket    = params.bucket
-    def region    = params.region ?: 'us-east-1'
-    def credsId   = params.credentialsId ?: 'aws-devops-portfolio-token' // Step fallback
-    def artifact  = params.artifactPattern ?: 'build/libs/*.jar'
-    def targetDir = params.targetFolder ?: "${env.JOB_BASE_NAME}/${env.BUILD_NUMBER}"
+    Logger log = new Logger(this)
+
+    def bucket        = params.bucket
+    def file          = params.file
+    def targetPath    = params.targetPath ?: ''
+    def awsCredential = params.awsCredential ?: 'aws-s3-credentials'
+    def region        = params.region ?: 'eu-central-1'
+    def includePath   = params.includePath ?: ''
+    def excludePath   = params.excludePath ?: ''
 
     if (!bucket) {
-        Logger.error('S3 Upload failed: Target bucket parameter is missing.')
-        error 'S3 Step Misconfigured'
+        log.error('Parameter "bucket" is required for S3 upload.')
+        error 'S3 upload failed: Missing bucket name.'
     }
 
-    Logger.info("Preparing AWS S3 archival context using Jenkins Credential ID [${credsId}]")
+    if (!file) {
+        log.error('Parameter "file" (or source pattern) is required for S3 upload.')
+        error 'S3 upload failed: Missing file path or pattern.'
+    }
 
-    // Enforce secure AWS Credential scoping dynamically
-    withAWS(credentials: credsId, region: region) {
-        try {
-            Logger.info("Uploading artifacts matching [${artifact}] to S3 path: s3://${bucket}/${targetDir}/")
-            
-            s3Upload(
-                file: artifact,
-                bucket: bucket,
-                path: "${targetDir}/",
-                metadatas: ["Project:${env.JOB_BASE_NAME}", "BuildNumber:${env.BUILD_NUMBER}"]
-            )
-            
-            Logger.info('S3 Artifact archival completed successfully.')
-        } catch (Exception e) {
-            Logger.error("AWS S3 Plugin runtime execution failure: ${e.message}")
-            error "Pipeline halted: Unable to secure build artifacts inside S3. Reason: ${e.message}"
+    log.info("Uploading file(s) [${file}] to S3 bucket [s3://${bucket}/${targetPath}]...")
+
+    try {
+        def uploadConfig = [
+            file: file,
+            bucket: bucket,
+            path: targetPath,
+            credentialsId: awsCredential,
+            region: region
+        ]
+
+        if (includePath) {
+            uploadConfig.includePath = includePath
         }
+
+        if (excludePath) {
+            uploadConfig.excludePath = excludePath
+        }
+
+        // Execute the upload to S3 using the s3Upload step provided by the AWS S3 Jenkins Plugin
+        s3Upload(uploadConfig)
+
+        log.info("File(s) successfully uploaded to S3!")
+
+    } catch (Exception e) {
+        log.error("Failed to upload file(s) to S3: ${e.message}")
+        error "S3 upload failed: ${e.message}"
     }
 }

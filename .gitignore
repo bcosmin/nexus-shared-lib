@@ -1,33 +1,72 @@
-# ==========================================
-# Gradle Build & Lifecycle Outputs
-# ==========================================
+# Gradle
 .gradle/
 build/
-out/
-.gradle-test-readiness*
+!gradle/wrapper/gradle-wrapper.jar
 
-# ==========================================
-# JetBrains / IntelliJ IDEA Workspace
-# ==========================================
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.log
+*.tmp
+*.temp
+
+# IntelliJ IDEA
+*.iml
+.idea/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs
+*.log
+
+# Temporary files
+*.swp
+*~
+*.tmp
+*.bak
+
+# Dependency directories
+/.gradle/
+
+# Maven
+target/
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# Generated files
+out/
+
+# Local environment
+local.properties
+
+# Gradle wrapper
+gradle-wrapper.jar
+
+# Ignore Gradle build scans
+.gradle/
+build/
+
+# JetBrains
 .idea/
 *.iws
 *.iml
 *.ipr
-out/
 
-# ==========================================
-# VS Code Configuration
-# ==========================================
-.vscode/
-
-# ==========================================
-# Local Security Scan Output Payloads
-# ==========================================
-truffle_report.json
-trivy_report.json
-
-# ==========================================
-# System / OS Artifacts
-# ==========================================
-.DS_Store
+# OS generated
 Thumbs.db
+
+# Optional: keep source control clean for generated test reports
+test-results/
+reports/

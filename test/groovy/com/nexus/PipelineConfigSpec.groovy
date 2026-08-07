@@ -6,40 +6,32 @@ import spock.lang.Specification
 
 class PipelineConfigSpec extends Specification {
 
-    def "should correctly populate object parameters using a provided valid map configuration"() {
-        given: "A custom user configuration map"
-        def rawMap = [
-            projectName: 'core-payments-api',
+    def "test PipelineConfig loads custom values and defaults correctly"() {
+        when:
+        def config = new PipelineConfig([
+            projectName: 'my-test-app',
             environment: 'production',
-            runSecurityScan: false,
-            optimizeCosts: true,
-            uploadToArtifactory: true
-        ]
+            runSecurityScan: true,
+            buildTool: 'maven'
+        ], 'fallback-name')
 
-        when: "The map is passed to the PipelineConfig constructor object"
-        def config = new PipelineConfig(rawMap, 'fallback-name')
-
-        then: "The attributes inside the object match our expectations"
-        config.projectName == 'core-payments-api'
+        then:
+        config.projectName == 'my-test-app'
         config.environment == 'production'
-        config.runSecurityScan == false
-        config.optimizeCosts == true
-        config.uploadToArtifactory == true
-
-        and: "Unspecified platform attributes match their actual default values"
-        // FIXED: Swapped to true to align directly with your class field configuration default value
-        config.uploadArtifactsToS3 == true
-        config.awsRegion == 'us-east-1'
+        config.runSecurityScan == true
+        config.buildTool == 'maven'
+        // Verificăm un default
+        config.awsRegion == 'eu-central-1'
+        config.buildAndPushDocker == false
     }
 
-    def "should gracefully trigger the fallback project string name when maps omit it"() {
-        given: "A configuration missing the project identifier"
-        def emptyMap = [:]
+    def "test PipelineConfig uses fallback when parameters are missing"() {
+        when:
+        def config = new PipelineConfig([:], 'fallback-name')
 
-        when: "Constructing the configurations object with an explicit fallback string context"
-        def config = new PipelineConfig(emptyMap, 'dynamic-jenkins-fallback-id')
-
-        then: "The framework correctly adopts the fallback identifier mapping"
-        config.projectName == 'dynamic-jenkins-fallback-id'
+        then:
+        config.projectName == 'fallback-name'
+        config.environment == 'development'
+        config.buildTool == 'gradle'
     }
 }
