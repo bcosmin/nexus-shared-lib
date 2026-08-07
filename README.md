@@ -80,3 +80,12 @@ For deep-dive configurations, advanced setups, and internal guidelines, please r
 * [Configuration Parameters](docs/parameters.md) — Complete list of options available in PipelineConfig.
 * [Custom Extension Hooks](docs/custom-hooks.md) — Injecting custom closures (beforeBuild, afterBuild, etc.).
 * [Security & Compliance Guard](docs/security.md) — Overview of Trufflehog secret leaks and Trivy vulnerability enforcement.
+
+---
+
+## Usage Examples
+
+Check the `examples/` directory for ready-to-use boilerplate code:
+
+* [Basic Pipeline](examples/basic-pipeline.groovy) — Minimal setup for quick builds.
+* [Complex Pipeline](examples/complex-pipeline.groovy) — Full configuration with security, containerization, and K8s deployment.
