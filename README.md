@@ -89,3 +89,9 @@ Check the `examples/` directory for ready-to-use boilerplate code:
 
 * [Basic Pipeline](example/basic-pipeline.groovy) — Minimal setup for quick builds.
 * [Complex Pipeline](example/complex-pipeline.groovy) — Full configuration with security, containerization, and K8s deployment.
+
+---
+
+## Demo project
+
+[Demo Nexus Shared Lib](https://github.com/bcosmin/demo-nexus-shared-lib)
