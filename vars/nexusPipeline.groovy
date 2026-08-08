@@ -112,9 +112,18 @@ def call(Map configMap = [:]) {
                 steps {
                     script {
                         log.info("Building application: ${config.projectName}")
-                        // Dynamically resolve build command based on the configured tool stack
-                        def buildCommand = config.buildTool == 'maven' ? 'mvn clean package' : './gradlew clean build'
-                        sh buildCommand
+                        
+                        if (config.buildTool == 'maven') {
+                            sh 'mvn clean package'
+                        } else {
+                              def hasWrapper = fileExists('gradlew')
+                              if (hasWrapper) {
+                                  sh './gradlew clean build'
+                            } else {
+                                log.info("No gradlew wrapper found. Falling back to global gradle tool...")
+                                sh 'gradle clean build'
+                          }
+                      }
                     }
                 }
             }
