@@ -18,21 +18,32 @@ class EmailNotifier implements Serializable {
     /**
      * Sends an email notification using the Jenkins Email Extension plugin.
      *
-     * @param config Map containing configuration options (emailRecipients, emailTo, jobName, buildNumber, status)
+     * @param config Map containing configuration options (emailRecipients, emailTo, jobName, buildNumber, status, sendEmailNotifications)
      * @param message The body content of the email
      */
     void sendNotification(Map config, String message) {
+        // Return early if notifications are explicitly disabled
+        if (config.sendEmailNotifications == false) {
+            return
+        }
+
         // Determine recipients from emailRecipients or fallback to emailTo
         def recipients = config.emailRecipients ?: config.emailTo
 
         // Return early if no recipients are defined
-        if (!recipients) return
+        if (!recipients) {
+            return
+        }
 
-        // Execute the native Email Extension step to send the email
-        steps.emailext(
-            to: recipients,
-            subject: "[Jenkins] ${config.jobName ?: 'Build'} - Build #${config.buildNumber ?: 'N/A'} (${config.status ?: 'INFO'})",
-            body: message
-        )
+        // Execute the native Email Extension step inside try-catch to prevent build failures on SMTP errors
+        try {
+            steps.emailext(
+                to: recipients,
+                subject: "[Jenkins] ${config.jobName ?: 'Build'} - Build #${config.buildNumber ?: 'N/A'} (${config.status ?: 'INFO'})",
+                body: message
+            )
+        } catch (Exception e) {
+            steps.echo "[WARNING] Could not send email notification: ${e.message}"
+        }
     }
 }
