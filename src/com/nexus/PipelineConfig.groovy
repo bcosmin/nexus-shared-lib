@@ -50,10 +50,15 @@ class PipelineConfig implements Serializable {
     Closure afterDeploy
 
     // Notifications
+    boolean sendEmailNotifications
     String notificationEmail
     boolean notifyOnSuccess
-    String teamsWebhookUrl
+    
+    boolean sendSlackNotification
     String slackChannel
+
+    boolean sendTeamsNotification
+    String teamsWebhookUrl
 
     /**
      * Constructor that hydrates the configuration map provided in the Jenkinsfile.
@@ -98,9 +103,14 @@ class PipelineConfig implements Serializable {
         this.beforeDeploy        = configMap.beforeDeploy
         this.afterDeploy         = configMap.afterDeploy
 
+        this.sendEmailNotifications = configMap.sendEmailNotifications != null ? configMap.sendEmailNotifications : false
         this.notificationEmail   = configMap.notificationEmail ?: ''
         this.notifyOnSuccess     = configMap.notifyOnSuccess != null ? configMap.notifyOnSuccess : false
-        this.teamsWebhookUrl     = configMap.teamsWebhookUrl ?: ''
+        
+        this.sendSlackNotification = configMap.sendSlackNotification != null ? configMap.sendSlackNotification : false
         this.slackChannel        = configMap.slackChannel ?: ''
+
+        this.sendTeamsNotification = configMap.sendTeamsNotification != null ? configMap.sendTeamsNotification : false
+        this.teamsWebhookUrl     = configMap.teamsWebhookUrl ?: ''
     }
 }
