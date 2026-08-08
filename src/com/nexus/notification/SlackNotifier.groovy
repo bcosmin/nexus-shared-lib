@@ -23,13 +23,17 @@ class SlackNotifier implements Serializable {
      */
     void sendNotification(Map config, String message) {
         // Return early if the Slack channel destination is not defined
-        if (!config.slackChannel) return
+        if (!config.slackChannel || config.sendSlackNotification == false) { return }
 
         // Execute the native Slack plugin step to dispatch the message
-        steps.slackSend(
-            channel: config.slackChannel,
-            color: config.color ?: 'good',
-            message: message
-        )
+        try {
+                    steps.slackSend(
+                        channel: config.slackChannel,
+                        color: config.color ?: 'good',
+                        message: message
+                    )
+                } catch (Exception e) {
+                    steps.echo "[WARNING] Could not send Slack notification: ${e.message}"
+                }
     }
 }
