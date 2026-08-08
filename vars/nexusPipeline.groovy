@@ -31,7 +31,7 @@ def call(Map configMap = [:]) {
             timestamps()
             timeout(time: 1, unit: 'HOURS')
             buildDiscarder(logRotator(numToKeepStr: '10'))
-            ansiColor('xterm')
+            wrap([$class: 'AnsiColorBuildWrapper', colorMapName: 'xterm'])
         }
 
         stages {
