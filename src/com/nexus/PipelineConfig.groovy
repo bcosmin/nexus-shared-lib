@@ -12,6 +12,7 @@ class PipelineConfig implements Serializable {
 
     // Security & Code Quality
     boolean runSecurityScan
+    boolean runAdvancedSecurityGuard
     String buildTool
     String sonarAdditionalArgs
 
