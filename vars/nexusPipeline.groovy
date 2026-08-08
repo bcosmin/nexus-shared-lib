@@ -116,14 +116,16 @@ def call(Map configMap = [:]) {
                         if (config.buildTool == 'maven') {
                             sh 'mvn clean package'
                         } else {
-                              def hasWrapper = fileExists('gradlew')
-                              if (hasWrapper) {
-                                  sh './gradlew clean build'
+                            def hasWrapper = fileExists('gradlew')
+                            if (hasWrapper) {
+                                sh './gradlew clean build'
                             } else {
-                                log.info("No gradlew wrapper found. Falling back to global gradle tool...")
-                                sh 'gradle clean build'
-                          }
-                      }
+                                log.info("No gradlew found. Using Global Gradle Tool...")
+                                // Numele 'Default' se potrivește exact cu ce ai în setările din imagine
+                                def gradleHome = tool name: 'Default', type: 'gradle'
+                                sh "${gradleHome}/bin/gradle clean build"
+                            }
+                        }
                     }
                 }
             }
